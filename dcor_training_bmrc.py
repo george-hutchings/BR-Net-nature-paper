@@ -10,7 +10,16 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset
 
-save_dir = '/well/nichols-nvs/users/peo100/cf_net/brnet_toyexample/dcor_net/'
+save_dir = '/well/nichols-nvs/users/peo100/cf_net/brnet_toyexample/dcor_net/' + time.strftime("%d%m%Y") + '/'
+
+#make the directory if it is not there
+import os
+if not os.path.exists(save_dir):
+    os.makedirs(save_dir)
+
+
+
+
 lam = 10
 epochs = 35001
 batch_size = 128
@@ -59,7 +68,10 @@ for i in range(N*2):
     x[i,16:,16:,0] = gkern(kernlen=16, nsig=5)*mf[i]
     x[i] = x[i] + np.random.normal(0,0.01,size=(32,32,1))
 
-
+# shuffle the data
+idx = np.random.permutation(len(y))
+x = x[idx,:,:,:]
+y = y[idx]
 
 class MyDataset(Dataset):
     def __init__(self, data, label, confounders):
@@ -88,6 +100,14 @@ valid_y = yy[i:]
 
 train_cf = cfcf[:i]
 valid_cf = cfcf[i:]
+
+## save the data
+np.save(save_dir + 'train_x.npy', train_x)
+np.save(save_dir + 'valid_x.npy', valid_x)
+np.save(save_dir + 'train_y.npy', train_y)
+np.save(save_dir + 'valid_y.npy', valid_y)
+np.save(save_dir + 'train_cf.npy', train_cf)
+np.save(save_dir + 'valid_cf.npy', valid_cf)
 
 trainset = MyDataset(xx[:i],yy[:i], cfcf[:i])
 valset = MyDataset(xx[i:],yy[i:], cfcf[i:])
@@ -189,6 +209,8 @@ train_loss_dcor_list = []
 valid_loss_dcor_list = []
 train_lossb_dcor_list = []
 valid_lossb_dcor_list = []
+train_acc_list = []
+valid_acc_list = []
 
 total_time = 0
 start_time = time.time()
@@ -198,6 +220,8 @@ for epoch in range(epochs):
     valid_loss = 0.0
     train_lossb = 0.0
     valid_lossb = 0.0
+    train_acc = 0.0
+    valid_acc = 0.0
 
 
     
@@ -218,6 +242,7 @@ for epoch in range(epochs):
 
             train_loss += lossp.item()
             train_lossb += lossb.item()
+            train_acc += (torch.round(y_pred) == y).sum().item() / y.size(0)
 
             opt.zero_grad(True)
             (lossp + lam*lossb).backward()
@@ -245,17 +270,22 @@ for epoch in range(epochs):
 
             valid_loss += lossp.item()
             valid_lossb += lossb.item()
+            valid_acc += (torch.round(y_pred) == y1).sum().item() / y1.size(0)
 
     train_loss /= len(train_loader)
     valid_loss /= len(valid_loader)
     train_lossb /= len(train_loader)
     valid_lossb /= len(valid_loader) # hence this is the per batch loss
+    train_acc /= len(train_loader)
+    valid_acc /= len(valid_loader)
 
 
     train_loss_dcor_list += [train_loss]
     valid_loss_dcor_list += [valid_loss]
     train_lossb_dcor_list += [train_lossb]
     valid_lossb_dcor_list += [valid_lossb]
+    train_acc_list += [train_acc]
+    valid_acc_list += [valid_acc]
 
 
     if (epoch%100==0):
@@ -300,4 +330,15 @@ plt.ylabel('Lossb')
 plt.title('Lossb')
 plt.legend()
 plt.savefig(save_dir + 'lossb.png', bbox_inches='tight')
+plt.show()
+
+# Plotting accuracy
+plt.figure(figsize=(10, 5))
+plt.plot(np.array(train_acc_list), label='Train Accuracy')
+plt.plot(np.array(valid_acc_list), label='Valid Accuracy')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.title('Accuracy')
+plt.legend()
+plt.savefig(save_dir + 'accuracy.png', bbox_inches='tight')
 plt.show()
