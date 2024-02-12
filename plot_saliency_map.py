@@ -65,7 +65,8 @@ class modelP1(nn.Module):
             nn.Linear(32, 16),
             nn.Tanh(),
             nn.Linear(16, 1),
-            nn.Sigmoid())
+            #nn.Sigmoid(), 
+            ) 
 
     def forward(self, x):
         return self.conv(x)
@@ -195,4 +196,33 @@ print("Accuracy on valid_x: {:.2%}".format(accuracy_validx))
 print("Accuracy on train_x: {:.2%}".format(accuracy_trainx))
 print("Dcorr on valid_x: {:.4f}".format(dcor_valid))
 print("Dcorr on train_x: {:.4f}".format(dcor_train))
+
+
+# permutation testing
+x_tmp = valid_xx
+cf_tmp = valid_cf
+
+n = len(x_tmp)
+F_pred = modelF(x_tmp)
+d_cor_perm_test_list = []
+for i in range(10000):
+    #permutation of indices 1:n
+    F_pred_perm = F_pred[torch.randperm(n),:]
+    dist = dcor_loss_calc(cf_tmp.flatten(start_dim=1), F_pred_perm.flatten(start_dim=1))
+    d_cor_perm_test_list += [dist.item()]
+
+observation = dcor_loss_calc(F_pred.flatten(start_dim=1), cf_tmp.flatten(start_dim=1)).item()
+p_val = (np.array(d_cor_perm_test_list)>observation).mean()
+print("p-value: {:.4f}".format(p_val))
+if p_val < 0.05:
+    print("Reject the null hypothesis that the training set is independent of the confounders")
+
+#plot histogram of d_cor_perm_test_list
+plt.hist(d_cor_perm_test_list, bins=1000)
+plt.axvline(observation, color='r')
+plt.title('Permutation test for dcorr')
+plt.xlabel('dcorr')
+plt.ylabel('Frequency')
+#plt.savefig(save_dir + 'dcorr_perm_test.png')
+plt.show()
 
