@@ -21,8 +21,8 @@ if not os.path.exists(save_dir):
 
 
 lam = 10
-epochs = 35001
-batch_size = 128
+epochs = 60000
+batch_size = 256
 
 
 
@@ -83,7 +83,7 @@ class MyDataset(Dataset):
     def __len__(self):
         return len(self.label)
     
-    batch_size = 128
+
 train_propotion = 0.8
 i = int(N*2*train_propotion)
 
@@ -214,6 +214,7 @@ valid_acc_list = []
 
 total_time = 0
 start_time = time.time()
+old_total_loss = np.inf
 for epoch in range(epochs):
 
     train_loss = 0.0
@@ -272,6 +273,8 @@ for epoch in range(epochs):
             valid_lossb += lossb.item()
             valid_acc += (torch.round(y_pred) == y1).sum().item() / y1.size(0)
 
+        
+
     train_loss /= len(train_loader)
     valid_loss /= len(valid_loader)
     train_lossb /= len(train_loader)
@@ -286,6 +289,19 @@ for epoch in range(epochs):
     valid_lossb_dcor_list += [valid_lossb]
     train_acc_list += [train_acc]
     valid_acc_list += [valid_acc]
+
+    total_loss = valid_loss + lam*valid_lossb
+    if total_loss < old_total_loss:
+        #save model
+        torch.save(modelF.state_dict(), save_dir+'best_modelF_dcor.pth')
+        torch.save(modelP.state_dict(), save_dir+'best_modelP_dcor.pth')
+        #print model saved
+        old_total_loss = total_loss
+
+
+
+
+
 
 
     if (epoch%100==0):
@@ -341,4 +357,20 @@ plt.ylabel('Accuracy')
 plt.title('Accuracy')
 plt.legend()
 plt.savefig(save_dir + 'accuracy.png', bbox_inches='tight')
+plt.show()
+
+
+
+# Plotting total loss
+total_loss = [train_loss[i] + lam * train_lossb[i] for i in range(len(train_loss))]
+total_val_loss = [valid_loss[i] + lam * valid_lossb[i] for i in range(len(valid_loss))]
+
+plt.figure(figsize=(10, 5))
+plt.plot(np.array(total_loss), label='Train Loss + lam * Lossb')
+plt.plot(np.array(total_val_loss), label='Valid Loss + lam * Lossb')
+plt.xlabel('Epochs')
+plt.ylabel('Total Loss')
+plt.title('Total Loss')
+plt.legend()
+plt.savefig(save_dir + 'total_loss.png', bbox_inches='tight')
 plt.show()
