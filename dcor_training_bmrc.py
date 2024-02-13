@@ -12,6 +12,7 @@ from torch.utils.data import Dataset
 
 save_dir = '/well/nichols-nvs/users/peo100/cf_net/brnet_toyexample/dcor_net/' + time.strftime("%d%m%Y") + '/'
 
+
 #make the directory if it is not there
 import os
 if not os.path.exists(save_dir):
@@ -283,6 +284,7 @@ for epoch in range(epochs):
     valid_acc /= len(valid_loader)
 
 
+
     train_loss_dcor_list += [train_loss]
     valid_loss_dcor_list += [valid_loss]
     train_lossb_dcor_list += [train_lossb]
@@ -362,8 +364,8 @@ plt.show()
 
 
 # Plotting total loss
-total_loss = [train_loss[i] + lam * train_lossb[i] for i in range(len(train_loss))]
-total_val_loss = [valid_loss[i] + lam * valid_lossb[i] for i in range(len(valid_loss))]
+total_loss = [train_loss_dcor_list[i] + lam * train_lossb_dcor_list[i] for i in range(len(train_lossb_dcor_list))]
+total_val_loss = [valid_loss_dcor_list[i] + lam * valid_lossb_dcor_list[i] for i in range(len(valid_lossb_dcor_list))]
 
 plt.figure(figsize=(10, 5))
 plt.plot(np.array(total_loss), label='Train Loss + lam * Lossb')
